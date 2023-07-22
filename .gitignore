@@ -1,0 +1,12 @@
+# .gitinore初期設定値
+*~
+.DS_Store
+
+# terraform関連のファイル
+terraform.tfstate
+terraform.tfstate.backup
+.terraform
+.terraform.lock.hcl
+
+# lambda.zipはapplyの際に生成
+lambda.zip
