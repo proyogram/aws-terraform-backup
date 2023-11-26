@@ -20,8 +20,8 @@ data "aws_iam_policy_document" "inline_lambda" {
   statement {
     actions = [
       "ec2:DescribeImages",
-			"ec2:DescribeSnapshots",
-			"ec2:DeleteSnapshot"
+      "ec2:DescribeSnapshots",
+      "ec2:DeleteSnapshot"
     ]
     resources = ["*"]
   }

@@ -8,7 +8,7 @@ resource "aws_scheduler_schedule" "main" {
 
   state = "ENABLED"
 
-  schedule_expression = var.cron_delete_schedule
+  schedule_expression          = var.cron_delete_schedule
   schedule_expression_timezone = "Asia/Tokyo"
 
   flexible_time_window {
