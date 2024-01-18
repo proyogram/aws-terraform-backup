@@ -1,12 +1,11 @@
-import json
 import boto3
 
 ec2 = boto3.client("ec2")
 account_id = boto3.client("sts").get_caller_identity()["Account"]
-snapshot_list =[]
-active_snapshot_list =[]
+exceptions = []
 
-def fetch_unnessesary_snapshot():
+def fetch_snapshot_ids():
+    snapshot_id_list =[]
     response = ec2.describe_snapshots(
             Filters=[
                 {
@@ -17,11 +16,12 @@ def fetch_unnessesary_snapshot():
             
         )
     for snapshot in response['Snapshots']:
-        snapshot_list.append(snapshot['SnapshotId'])
+        snapshot_id_list.append(snapshot['SnapshotId'])
         
-    return snapshot_list
+    return snapshot_id_list
     
-def fetch_active_snapshot():
+def fetch_active_snapshot_ids():
+    active_snapshot_list =[]
     response = ec2.describe_images(
         Filters=[
                 {
@@ -38,12 +38,26 @@ def fetch_active_snapshot():
     return active_snapshot_list
 
 def lambda_handler(event, context):
-    all_snapshot_list = fetch_unnessesary_snapshot()
-    active_snapshot_list = fetch_active_snapshot()
+    # スナップショットID一覧を取得
+    snapshot_ids = fetch_snapshot_ids()
+    # AMIと紐づくスナップショットID一覧を取得
+    active_snapshot_ids = fetch_active_snapshot_ids()
     # 「全スナップショット」-「現在使用しているスナップショット」を取得
-    unnesessary_snapshots = set(all_snapshot_list)-set(active_snapshot_list)
+    unnesessary_snapshots = set(snapshot_ids)-set(active_snapshot_ids)
     
-    # 不要なスナップショットの削除処理を以下に記載
+    # 不要なスナップショットを削除する
     for snapshot_id in unnesessary_snapshots:
-        ec2.delete_snapshot(SnapshotId=snapshot_id)
-        print(snapshot_id + "を削除しました。")
+        try:
+            # スナップショットを削除する
+            ec2.delete_snapshot(SnapshotId=snapshot_id)
+            print(f'Succeeded to delete {snapshot_id}.')
+        except Exception as e:
+            # スナップショットにAMIに紐づいている場合、処理をスキップする
+            if e.response["Error"]["Code"] == "InvalidSnapshot.InUse":
+                pass
+            else:
+                exceptions.append(e)
+                print(f'Error occured in deleting {snapshot_id}:{e}')
+
+    if len(exceptions) > 0:
+        raise Exception("Error occured in deleting snapshots.")
